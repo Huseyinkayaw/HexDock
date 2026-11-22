@@ -126,7 +126,13 @@ final class NowPlayingController {
     let panel: NSPanel
     let glass: NSView
     /// Kapak görselleri için diske önbellek yazmayan oturum.
-    let session = URLSession(configuration: .ephemeral)
+    let session: URLSession = {
+        let c = URLSessionConfiguration.ephemeral   // çerez, önbellek, disk yok
+        c.httpCookieStorage = nil
+        c.urlCache = nil
+        c.timeoutIntervalForRequest = 10
+        return URLSession(configuration: c)
+    }()
 
     // Canlı ayarlanabilir değerler (yeniden derlemeden):  defaults write local.hexdock <anahtar> <değer>
     var d: UserDefaults { .standard }
@@ -278,7 +284,11 @@ final class NowPlayingController {
                   let url = runScript("if player state is stopped then return \"\"\nreturn artwork url of current track"),
                   !url.isEmpty, url != model.artURL else { return }
             model.artURL = url
-            guard let u = URL(string: url) else { model.art = nil; return }
+            // Yalnızca https ve yalnızca Spotify'ın kendi görsel sunucuları; başka hiçbir adrese istek atılmaz.
+            guard let u = URL(string: url), u.scheme?.lowercased() == "https",
+                  let host = u.host?.lowercased(),
+                  host == "i.scdn.co" || host.hasSuffix(".scdn.co") || host.hasSuffix(".spotifycdn.com")
+            else { model.art = nil; return }
             // Spotify kapakları Spotify'ın görsel sunucusundan indirilir; diske kaydedilmez.
             session.dataTask(with: u) { data, _, _ in
                 let img = Self.thumbnail(data)
