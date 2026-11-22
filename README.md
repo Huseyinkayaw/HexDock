@@ -19,12 +19,12 @@ Prefer Terminal? Steps 3–4 can be replaced with:
 xattr -dr com.apple.quarantine /Applications/HexDock.app
 ```
 
-SHA-256 of the DMG: `5800628ed8ad8ba712166208d4f0f7caf1f80bb9c901176e6c6675623658d05c`
+SHA-256 of the DMG: `cffe207aeeafeca2656c7db8d31e00619c7a6582cd451032e690aacc28a7066e`
 
 ## Features
 - Live window thumbnails above Dock icons; click to switch to a window
 - Shows minimized windows and windows on other desktops / full-screen spaces (games included); close, minimize, fill or full-screen right from the preview
-- **Window switcher** opened with a shortcut (custom shortcut supported)
+- **Window switcher** opened with a shortcut (custom shortcut supported) — also lets you switch away from full-screen games, like Alt+Tab on Windows
 - **Now playing** card with playback controls for Spotify and Music
 - Appearance options such as distance from the Dock and zoom button
 
@@ -61,12 +61,12 @@ Dock ikonlarının üzerine gelince o uygulamanın **canlı pencere önizlemeler
 
 Terminal kullanıyorsanız 3–4. adımların yerine: `xattr -dr com.apple.quarantine /Applications/HexDock.app`
 
-DMG SHA-256: `5800628ed8ad8ba712166208d4f0f7caf1f80bb9c901176e6c6675623658d05c`
+DMG SHA-256: `cffe207aeeafeca2656c7db8d31e00619c7a6582cd451032e690aacc28a7066e`
 
 **Özellikler**
 - Dock ikonu üzerinde canlı pencere küçük resimleri; tıklayarak pencereye geçiş
 - Küçültülmüş pencereleri ve diğer masaüstlerindeki / tam ekrandaki pencereleri (oyunlar dahil) de gösterir; önizlemeden kapatma, küçültme, doldurma, tam ekran
-- Kısayolla açılan **pencere değiştirici** (özel kısayol atanabilir) — görüntüsü yukarıda
+- Kısayolla açılan **pencere değiştirici** (özel kısayol atanabilir); Windows'taki Alt+Tab gibi tam ekran oyunlardan da çıkmayı sağlar — görüntüsü yukarıda
 - Spotify ve Müzik için **şu an çalan** kartı ve oynatma kontrolleri
 - Dock'a mesafe, büyütme düğmesi gibi görünüm ayarları
 

@@ -353,7 +353,19 @@ final class SwitcherController {
                                     ax: el ?? AXUIElementCreateApplication(c.pid), minimized: false, hidden: false,
                                     otherSpace: true))
         }
-        // 3) Küçültülmüş ve gizli uygulamaların pencereleri sona
+        // 3) Ekranı ele geçiren tam ekran oyunlar (normal penceresi olmayan uygulamalar)
+        let listed = Set(items.map(\.pid))
+        for app in NSWorkspace.shared.runningApplications
+        where app.activationPolicy == .regular && app.processIdentifier != me && !listed.contains(app.processIdentifier) {
+            guard let g = WindowFinder.capturedFullscreen(pid: app.processIdentifier) else { continue }
+            seen.insert(g.id)
+            items.append(SwitchItem(id: g.id, pid: app.processIdentifier,
+                                    title: g.name.isEmpty ? (app.localizedName ?? "") : g.name,
+                                    appName: app.localizedName ?? "", icon: app.icon,
+                                    ax: AXUIElementCreateApplication(app.processIdentifier),
+                                    minimized: false, hidden: false, otherSpace: true))
+        }
+        // 4) Küçültülmüş ve gizli uygulamaların pencereleri sona
         for app in NSWorkspace.shared.runningApplications where app.activationPolicy == .regular && app.processIdentifier != me {
             for (id, el) in ax(app.processIdentifier).byID where !seen.contains(id) {
                 let minimized = axBool(el, kAXMinimizedAttribute)

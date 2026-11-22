@@ -19,6 +19,21 @@ enum WindowActions {
     /// Pencereyi öne getirir (gerekirse küçültmeden çıkarır, gizli uygulamayı gösterir).
     static func focus(_ win: AXUIElement, pid: pid_t) {
         guard let app = NSRunningApplication(processIdentifier: pid) else { return }
+        // Öndeki uygulama ekranı ele geçirmiş bir tam ekran oyunsa (ör. League of Legends), başka pencere
+        // onun üstüne çıkamaz. Windows'taki Alt+Tab gibi oyunu önce gizle (simge durumuna al), sonra geç.
+        if let front = NSWorkspace.shared.frontmostApplication, front.processIdentifier != pid,
+           WindowFinder.capturedFullscreen(pid: front.processIdentifier) != nil {
+            front.hide()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                MainActor.assumeIsolated { bringForward(win, app: app) }
+            }
+            return
+        }
+        bringForward(win, app: app)
+    }
+
+    private static func bringForward(_ win: AXUIElement, app: NSRunningApplication) {
+        let pid = app.processIdentifier
         if app.isHidden { app.unhide() }
         if axBool(win, kAXMinimizedAttribute) {
             AXUIElementSetAttributeValue(win, kAXMinimizedAttribute as CFString, kCFBooleanFalse)
@@ -230,6 +245,26 @@ enum WindowFinder {
         return .some(match(bounds, in: ax.unmatched))
     }
 
+    /// Ekranı kaplayan özel katmanlı pencere (ör. League of Legends gibi ekranı ele geçiren tam ekran oyunlar).
+    /// Bu oyunlar normal katman (0) yerine "kalkan" katmanını kullanır; normal listelerde görünmezler.
+    static func capturedFullscreen(pid: pid_t) -> (id: CGWindowID, bounds: CGRect, name: String)? {
+        let info = (CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID)
+                    as? [[String: Any]]) ?? []
+        let screens = NSScreen.screens.map(\.frame.size)
+        for w in info {
+            guard let owner = w[kCGWindowOwnerPID as String] as? pid_t, owner == pid,
+                  let layer = w[kCGWindowLayer as String] as? Int, layer > 0,
+                  let id = w[kCGWindowNumber as String] as? CGWindowID,
+                  let bd = w[kCGWindowBounds as String] as? NSDictionary,
+                  let b = CGRect(dictionaryRepresentation: bd as CFDictionary),
+                  // tüm ekranı kaplıyor olmalı
+                  screens.contains(where: { abs($0.width - b.width) < 2 && abs($0.height - b.height) < 2 }),
+                  !Spaces.of(id).isEmpty else { continue }
+            return (id, b, w[kCGWindowName as String] as? String ?? "")
+        }
+        return nil
+    }
+
     /// Bir uygulamanın tüm pencereleri: önce ekrandakiler, sonra küçültülmüşler.
     static func windows(pid: pid_t) -> [FoundWindow] {
         let (byID, unmatched) = axWindows(pid)
@@ -253,6 +288,12 @@ enum WindowFinder {
         for (id, ax) in byID where !seen.contains(id) && axBool(ax, kAXMinimizedAttribute) {
             out.append(FoundWindow(id: id, pid: pid, ax: ax, title: axString(ax, kAXTitleAttribute) ?? "",
                                    minimized: true, size: axSize(ax, kAXSizeAttribute) ?? CGSize(width: 16, height: 10)))
+        }
+        // Hiç normal penceresi yoksa: ekranı ele geçiren tam ekran oyun penceresi var mı?
+        if out.isEmpty, let g = capturedFullscreen(pid: pid) {
+            out.append(FoundWindow(id: g.id, pid: pid, ax: nil,
+                                   title: g.name.isEmpty ? (NSRunningApplication(processIdentifier: pid)?.localizedName ?? "") : g.name,
+                                   minimized: false, size: g.bounds.size, otherSpace: true))
         }
         if debugLogging {
             let name = NSRunningApplication(processIdentifier: pid)?.localizedName ?? "?"
