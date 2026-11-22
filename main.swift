@@ -74,6 +74,7 @@ struct WinItem: Identifiable {
     let title: String
     let ax: AXUIElement
     var minimized: Bool
+    var otherSpace = false
     let aspect: CGFloat          // pencerenin genişlik / yükseklik oranı
     var image: CGImage?
     var thumbW: CGFloat { Layout.thumbW(aspect: aspect) }
@@ -172,11 +173,13 @@ struct CardView: View {
                     .frame(width: item.thumbW, height: Layout.thumbH)
                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     .opacity(item.minimized ? 0.45 : 1)
-            } else if !item.minimized {
+            } else if !item.minimized && !item.otherSpace {
                 ProgressView().controlSize(.small)
+            } else if let icon = model.appIcon {
+                Image(nsImage: icon).resizable().frame(width: 48, height: 48).opacity(0.8)
             }
-            if item.minimized {
-                Text("Küçültüldü")
+            if item.minimized || item.otherSpace {
+                Text(item.minimized ? "Küçültüldü" : "Diğer masaüstü")
                     .font(.system(size: 10, weight: .medium))
                     .padding(.horizontal, 7).padding(.vertical, 3)
                     .background(Capsule().fill(.black.opacity(0.45)))
@@ -239,7 +242,7 @@ final class Controller {
         panel.level = .popUpMenu
         panel.hidesOnDeactivate = false
         panel.isMovable = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
 
         let blur = NSVisualEffectView()
         blur.material = .hudWindow
@@ -390,7 +393,7 @@ final class Controller {
         let pid = app.processIdentifier
         let appEl = AXUIElementCreateApplication(pid)
         return WindowFinder.windows(pid: pid).map { w in
-            WinItem(id: w.id, title: w.title, ax: w.ax ?? appEl, minimized: w.minimized,
+            WinItem(id: w.id, title: w.title, ax: w.ax ?? appEl, minimized: w.minimized, otherSpace: w.otherSpace,
                     aspect: w.size.width / max(w.size.height, 1))
         }
     }
@@ -452,7 +455,7 @@ final class Controller {
             guard let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false) else { return }
             for id in ids {
                 guard token == self.token else { return }
-                guard let win = content.windows.first(where: { $0.windowID == id }), win.isOnScreen else { continue }
+                guard let win = content.windows.first(where: { $0.windowID == id }) else { continue }
                 let filter = SCContentFilter(desktopIndependentWindow: win)
                 let cfg = SCStreamConfiguration()
                 let scale = min(1, 480 / max(win.frame.width, 1))
@@ -572,6 +575,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var fullItem: NSMenuItem!
     var modeItems: [NSMenuItem] = []
     var gapItems: [NSMenuItem] = []
+    var artItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Donmuş bir uygulamayı sorgularken en fazla 0,5 sn bekle (varsayılan 6 sn).
@@ -645,6 +649,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(NSMenuItem.sectionHeader(title: "Müzik"))
         spotifyItem = item("Müzik kutusunu göster", #selector(toggleSpotify))
         menu.addItem(spotifyItem)
+        artItem = item("Spotify kapaklarını internetten indir", #selector(toggleArtwork))
+        menu.addItem(artItem)
 
         menu.addItem(.separator())
         menu.addItem(item("HexDock'tan çık", #selector(quit), key: "q"))
@@ -679,6 +685,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         quitItem.state = UserDefaults.standard.bool(forKey: "closeQuitsApp") ? .on : .off
         loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
         spotifyItem.state = UserDefaults.standard.bool(forKey: "spotifyDisabled") ? .off : .on
+        artItem.state = UserDefaults.standard.bool(forKey: "spotifyArtwork") ? .on : .off
         switcherItem.state = switcherEnabled ? .on : .off
         let spec = ShortcutSpec.current
         let sc = SwitcherShortcut.current.rawValue
@@ -712,6 +719,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func recordShortcut() { ShortcutRecorder.open {} }
     @objc func noop() {}
+
+    @objc func toggleArtwork() {
+        let d = UserDefaults.standard
+        d.set(!d.bool(forKey: "spotifyArtwork"), forKey: "spotifyArtwork")
+        nowPlaying.model.artURL = ""
+        nowPlaying.refreshArtwork()
+    }
 
     @objc func setGap(_ sender: NSMenuItem) {
         UserDefaults.standard.set(sender.representedObject as? Double ?? 10, forKey: "pvGap")

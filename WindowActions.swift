@@ -153,6 +153,7 @@ struct FoundWindow {
     let title: String
     let minimized: Bool
     let size: CGSize
+    var otherSpace = false       // başka masaüstünde ya da tam ekran alanında (ör. oyunlar)
 }
 
 enum WindowFinder {
@@ -195,6 +196,40 @@ enum WindowFinder {
         }
     }
 
+    /// Tüm masaüstlerindeki normal pencereler (başka masaüstü ve tam ekran alanları dahil).
+    static func allSpaces(pid: pid_t? = nil) -> [(id: CGWindowID, pid: pid_t, bounds: CGRect, name: String, onScreen: Bool)] {
+        let info = (CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID)
+                    as? [[String: Any]]) ?? []
+        return info.compactMap { w in
+            guard (w[kCGWindowLayer as String] as? Int) == 0,
+                  let owner = w[kCGWindowOwnerPID as String] as? pid_t, pid == nil || owner == pid,
+                  let id = w[kCGWindowNumber as String] as? CGWindowID,
+                  ((w[kCGWindowAlpha as String] as? Double) ?? 1) > 0.01,
+                  let bd = w[kCGWindowBounds as String] as? NSDictionary,
+                  let b = CGRect(dictionaryRepresentation: bd as CFDictionary),
+                  b.width >= 120, b.height >= 80 else { return nil }
+            return (id, owner, b, w[kCGWindowName as String] as? String ?? "",
+                    (w[kCGWindowIsOnscreen as String] as? Bool) ?? false)
+        }
+    }
+
+    /// Ekranda olmayan bir pencere gerçek bir uygulama penceresi mi? (gizli yardımcı pencereleri ele)
+    static func isRealOffscreen(id: CGWindowID, bounds: CGRect,
+                                ax: (byID: [CGWindowID: AXUIElement], unmatched: [AXUIElement])) -> AXUIElement?? {
+        guard bounds.width >= 200, bounds.height >= 150 else { return nil }
+        if let el = ax.byID[id] {
+            // AX biliyorsa: küçültülmemiş normal pencere olmalı (küçültülmüşler ayrıca eklenir)
+            guard !axBool(el, kAXMinimizedAttribute),
+                  axString(el, kAXSubroleAttribute) == kAXStandardWindowSubrole as String else { return nil }
+            return .some(el)
+        }
+        // AX bu pencereyi bilmiyor: tam ekran alanındaki ya da başka masaüstündeki pencereler (oyunlar dahil)
+        // AX'te çoğu zaman görünmez. Gerçekten bir masaüstüne (Space) yerleşmiş mi diye WindowServer'a sor;
+        // gizli/kapalı yardımcı pencereler hiçbir masaüstünde değildir, böylece elenir.
+        guard !Spaces.of(id).isEmpty else { return nil }
+        return .some(match(bounds, in: ax.unmatched))
+    }
+
     /// Bir uygulamanın tüm pencereleri: önce ekrandakiler, sonra küçültülmüşler.
     static func windows(pid: pid_t) -> [FoundWindow] {
         let (byID, unmatched) = axWindows(pid)
@@ -207,6 +242,14 @@ enum WindowFinder {
                                    title: ax.flatMap { axString($0, kAXTitleAttribute) } ?? c.name,
                                    minimized: false, size: c.bounds.size))
         }
+        // Başka masaüstündeki / tam ekrandaki pencereler (oyunlar dahil)
+        for c in allSpaces(pid: pid) where !c.onScreen && !seen.contains(c.id) {
+            guard let el = isRealOffscreen(id: c.id, bounds: c.bounds, ax: (byID, unmatched)) else { continue }
+            seen.insert(c.id)
+            out.append(FoundWindow(id: c.id, pid: pid, ax: el,
+                                   title: el.flatMap { axString($0, kAXTitleAttribute) } ?? c.name,
+                                   minimized: false, size: c.bounds.size, otherSpace: true))
+        }
         for (id, ax) in byID where !seen.contains(id) && axBool(ax, kAXMinimizedAttribute) {
             out.append(FoundWindow(id: id, pid: pid, ax: ax, title: axString(ax, kAXTitleAttribute) ?? "",
                                    minimized: true, size: axSize(ax, kAXSizeAttribute) ?? CGSize(width: 16, height: 10)))
@@ -216,5 +259,23 @@ enum WindowFinder {
             dlog("windows \(name): ax=\(byID.count)+\(unmatched.count) unmatched, onscreen=\(seen.count), result=\(out.count), noAX=\(out.filter { $0.ax == nil }.count)")
         }
         return out
+    }
+}
+
+// MARK: - Masaüstü (Space) bilgisi — WindowServer'ın özel ama yaygın kullanılan API'si (AltTab da kullanır)
+
+@_silgen_name("CGSMainConnectionID")
+func CGSMainConnectionID() -> Int32
+
+@_silgen_name("CGSCopySpacesForWindows")
+func CGSCopySpacesForWindows(_ cid: Int32, _ mask: Int32, _ windows: CFArray) -> Unmanaged<CFArray>?
+
+enum Spaces {
+    static let connection = CGSMainConnectionID()
+    /// Pencerenin bulunduğu masaüstleri (tümü). Boşsa pencere hiçbir masaüstünde değil (gizli/kapalı).
+    static func of(_ id: CGWindowID) -> [UInt64] {
+        guard let arr = CGSCopySpacesForWindows(connection, 0x7 /* tüm masaüstleri */, [NSNumber(value: id)] as CFArray)?
+                .takeRetainedValue() as? [NSNumber] else { return [] }
+        return arr.map(\.uint64Value)
     }
 }

@@ -70,8 +70,10 @@ enum SelfTest {
             var notes: [String] = []
             if !inDock { notes.append("Dock'ta bu yolla eşleşen öğe yok (Dock'tan önizleme açılmaz; Alt+Tab'da görünür)") }
             if noAX > 0 { notes.append("\(noAX) pencere Erişilebilirlik bilgisiz → küçült/yerleştir çalışmaz, × yalnızca son pencerede çıkar") }
+            let other = found.filter(\.otherSpace).count
+            if other > 0 { notes.append("\(other) pencere başka masaüstünde/tam ekranda (listede \"Diğer masaüstü\" olarak görünür)") }
             if found.isEmpty && !nonMinAX.isEmpty {
-                notes.append("\(nonMinAX.count) pencere başka masaüstünde/tam ekranda → önizlemede görünmez")
+                notes.append("\(nonMinAX.count) pencere AX'te var ama hiçbir listede bulunamadı")
             }
             // Düğme desteği (yalnızca okunur: ayarlanabilir mi?)
             var noClose = 0, noMin = 0, noPos = 0

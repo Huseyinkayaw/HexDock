@@ -43,6 +43,7 @@ final class NowPlayingModel: ObservableObject {
     @Published var art: NSImage?
     @Published var height: CGFloat = 60
     @Published var playerName = "Spotify"
+    @Published var appIcon: NSImage?
     var artURL = ""
 }
 
@@ -59,6 +60,10 @@ struct NowPlayingView: View {
             Group {
                 if let art = model.art {
                     Image(nsImage: art).resizable().interpolation(.high).aspectRatio(contentMode: .fill)
+                } else if let icon = model.appIcon {
+                    Image(nsImage: icon).resizable().interpolation(.high).aspectRatio(contentMode: .fit)
+                        .padding(4)
+                        .background(Color.primary.opacity(0.06))
                 } else {
                     Image(systemName: "music.note")
                         .font(.system(size: 14))
@@ -226,6 +231,7 @@ final class NowPlayingController {
                     self.model.artist = state == "Stopped" ? "" : artist
                     self.model.playing = state == "Playing"
                     self.model.playerName = player.name
+                    self.model.appIcon = player.app?.icon
                     self.refreshArtwork()
                 }
             }
@@ -255,6 +261,7 @@ final class NowPlayingController {
 
     func refreshFromScript() {
         model.playerName = active.name
+        model.appIcon = active.app?.icon
         guard let out = runScript("""
             if player state is stopped then return ""
             return (name of current track) & "\\n" & (artist of current track) & "\\n" & (player state as string)
@@ -280,6 +287,11 @@ final class NowPlayingController {
     func refreshArtwork() {
         switch active {
         case .spotify:
+            // Spotify kapağı yalnızca internet adresi olarak veriyor. Ayar kapalıysa (varsayılan) hiç indirilmez;
+            // kapak yerine Spotify simgesi gösterilir — dışarıya hiçbir bağlantı yok.
+            guard UserDefaults.standard.bool(forKey: "spotifyArtwork") else {
+                model.artURL = ""; model.art = nil; return
+            }
             guard !model.title.isEmpty,
                   let url = runScript("if player state is stopped then return \"\"\nreturn artwork url of current track"),
                   !url.isEmpty, url != model.artURL else { return }

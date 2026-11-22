@@ -19,11 +19,11 @@ Prefer Terminal? Steps 3–4 can be replaced with:
 xattr -dr com.apple.quarantine /Applications/HexDock.app
 ```
 
-SHA-256 of the DMG: `5d7ca26fc6df5796109251d181982db6c154f2eca5343fe5a4b8876cce10b71e`
+SHA-256 of the DMG: `5800628ed8ad8ba712166208d4f0f7caf1f80bb9c901176e6c6675623658d05c`
 
 ## Features
 - Live window thumbnails above Dock icons; click to switch to a window
-- Shows minimized windows too; close, minimize, fill or full-screen right from the preview
+- Shows minimized windows and windows on other desktops / full-screen spaces (games included); close, minimize, fill or full-screen right from the preview
 - **Window switcher** opened with a shortcut (custom shortcut supported)
 - **Now playing** card with playback controls for Spotify and Music
 - Appearance options such as distance from the Dock and zoom button
@@ -33,7 +33,7 @@ SHA-256 of the DMG: `5d7ca26fc6df5796109251d181982db6c154f2eca5343fe5a4b8876cce1
 ![HexDock window switcher](docs/switcher.png)
 
 ## Privacy & security
-- The only network request: when Spotify is playing, the album cover is fetched over HTTPS from Spotify's own image servers (no cookies, no disk cache). No other address is ever contacted. Apple Music covers are read locally.
+- Makes no network connections by default. Spotify album covers are **off by default** (the Spotify icon is shown instead). If you turn on *“Download Spotify covers from the internet”* in the menu, covers are fetched over HTTPS only from Spotify's own image servers (no cookies, no disk cache). Apple Music covers are always read locally.
 - The keyboard listener only reacts to the window switcher shortcut; keystrokes are never recorded or stored.
 - Debug logging is off by default.
 
@@ -61,17 +61,17 @@ Dock ikonlarının üzerine gelince o uygulamanın **canlı pencere önizlemeler
 
 Terminal kullanıyorsanız 3–4. adımların yerine: `xattr -dr com.apple.quarantine /Applications/HexDock.app`
 
-DMG SHA-256: `5d7ca26fc6df5796109251d181982db6c154f2eca5343fe5a4b8876cce10b71e`
+DMG SHA-256: `5800628ed8ad8ba712166208d4f0f7caf1f80bb9c901176e6c6675623658d05c`
 
 **Özellikler**
 - Dock ikonu üzerinde canlı pencere küçük resimleri; tıklayarak pencereye geçiş
-- Küçültülmüş pencereleri de gösterir; önizlemeden kapatma, küçültme, doldurma, tam ekran
+- Küçültülmüş pencereleri ve diğer masaüstlerindeki / tam ekrandaki pencereleri (oyunlar dahil) de gösterir; önizlemeden kapatma, küçültme, doldurma, tam ekran
 - Kısayolla açılan **pencere değiştirici** (özel kısayol atanabilir) — görüntüsü yukarıda
 - Spotify ve Müzik için **şu an çalan** kartı ve oynatma kontrolleri
 - Dock'a mesafe, büyütme düğmesi gibi görünüm ayarları
 
 **Gizlilik ve güvenlik**
-- Tek ağ isteği: Spotify çalarken albüm kapağı HTTPS ile yalnızca Spotify'ın kendi görsel sunucularından alınır (çerez ve disk önbelleği yok). Başka hiçbir adrese bağlanmaz. Apple Music kapakları yerelden okunur.
+- Varsayılan olarak internete bağlanmaz. Spotify albüm kapakları **varsayılan olarak kapalıdır** (yerine Spotify simgesi gösterilir). Menüden *“Spotify kapaklarını internetten indir”* açılırsa kapaklar HTTPS ile yalnızca Spotify'ın kendi görsel sunucularından alınır (çerez ve disk önbelleği yok). Apple Music kapakları her zaman yerelden okunur.
 - Klavye dinleyici yalnızca pencere değiştirici kısayoluna tepki verir; tuş vuruşları kaydedilmez.
 - Ayrıntılı kayıt (log) varsayılan olarak kapalıdır.
 

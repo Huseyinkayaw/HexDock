@@ -70,6 +70,7 @@ struct SwitchItem: Identifiable {
     let minimized: Bool
     let hidden: Bool
     var image: CGImage?
+    var otherSpace = false
 }
 
 final class SwitcherModel: ObservableObject {
@@ -147,8 +148,8 @@ struct SwitchCell: View {
                 } else if let icon = item.icon {
                     Image(nsImage: icon).resizable().frame(width: 64, height: 64).opacity(0.85)
                 }
-                if item.minimized || item.hidden {
-                    Text(item.minimized ? "Küçültüldü" : "Gizli")
+                if item.minimized || item.hidden || item.otherSpace {
+                    Text(item.minimized ? "Küçültüldü" : item.hidden ? "Gizli" : "Diğer masaüstü")
                         .font(.system(size: 10, weight: .medium))
                         .padding(.horizontal, 7).padding(.vertical, 3)
                         .background(Capsule().fill(.black.opacity(0.5)))
@@ -199,9 +200,11 @@ final class SwitcherController {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
-        panel.level = .popUpMenu
+        // Tam ekran oyunlar ekranı "kalkan" katmanıyla kaplayabiliyor; değiştirici onun da üstünde açılsın.
+        panel.level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()) + 1)
         panel.hidesOnDeactivate = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        // Her masaüstünde ve tam ekran uygulamaların üstünde görünebilsin.
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
 
         let glass = NSGlassEffectView()
         glass.cornerRadius = 22
@@ -339,7 +342,18 @@ final class SwitcherController {
                                     appName: app.localizedName ?? "", icon: app.icon,
                                     ax: el ?? AXUIElementCreateApplication(c.pid), minimized: false, hidden: false))
         }
-        // 2) Küçültülmüş ve gizli uygulamaların pencereleri sona
+        // 2) Başka masaüstündeki ve tam ekrandaki pencereler (oyunlar dahil)
+        for c in WindowFinder.allSpaces() where !c.onScreen && !seen.contains(c.id) && c.pid != me {
+            guard let app = NSRunningApplication(processIdentifier: c.pid), app.activationPolicy == .regular, !app.isHidden,
+                  let el = WindowFinder.isRealOffscreen(id: c.id, bounds: c.bounds, ax: ax(c.pid)) else { continue }
+            seen.insert(c.id)
+            items.append(SwitchItem(id: c.id, pid: c.pid,
+                                    title: el.flatMap { axString($0, kAXTitleAttribute) } ?? c.name,
+                                    appName: app.localizedName ?? "", icon: app.icon,
+                                    ax: el ?? AXUIElementCreateApplication(c.pid), minimized: false, hidden: false,
+                                    otherSpace: true))
+        }
+        // 3) Küçültülmüş ve gizli uygulamaların pencereleri sona
         for app in NSWorkspace.shared.runningApplications where app.activationPolicy == .regular && app.processIdentifier != me {
             for (id, el) in ax(app.processIdentifier).byID where !seen.contains(id) {
                 let minimized = axBool(el, kAXMinimizedAttribute)
@@ -437,9 +451,9 @@ final class SwitcherController {
 
     func captureThumbnails(token: Int) {
         guard CGPreflightScreenCaptureAccess() else { return }
-        let ids = model.items.filter { !$0.minimized && !$0.hidden }.map(\.id)
+        let ids = model.items.filter { !$0.minimized && !$0.hidden }.map(\.id)   // diğer masaüstündekiler de denenir
         Task { @MainActor in
-            guard let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true) else { return }
+            guard let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false) else { return }
             for id in ids {
                 guard token == self.token else { return }
                 guard let win = content.windows.first(where: { $0.windowID == id }) else { continue }
