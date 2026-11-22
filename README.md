@@ -23,7 +23,11 @@ A macOS menu bar app that shows **live window previews** when you hover over Doc
 ## Download
 **[⬇ Download HexDock.dmg](https://github.com/Huseyinkayaw/HexDock/raw/main/release/HexDock.dmg)** — open it and drag **HexDock** into **Applications**.
 
-Requires macOS 26+ on Apple Silicon (M1 or later). The app is not notarized by Apple, so the first time you open it macOS will warn you: right-click the app → **Open** → **Open**, or go to **System Settings → Privacy & Security → Open Anyway**.
+Requires macOS 26+ on Apple Silicon (M1 or later). The app is not notarized by Apple, so macOS blocks the first launch ("Apple could not verify…"). Click **Done**, then go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to HexDock. Or run this once in Terminal:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/HexDock.app
+```
 
 SHA-256: `5d7ca26fc6df5796109251d181982db6c154f2eca5343fe5a4b8876cce10b71e`
 
@@ -53,6 +57,6 @@ Dock ikonlarının üzerine gelince o uygulamanın **canlı pencere önizlemeler
 - Klavye dinleyici yalnızca pencere değiştirici kısayoluna tepki verir; tuş vuruşları kaydedilmez.
 - Ayrıntılı kayıt (log) varsayılan olarak kapalıdır.
 
-**İndir:** **[⬇ HexDock.dmg](https://github.com/Huseyinkayaw/HexDock/raw/main/release/HexDock.dmg)** — açın ve **HexDock**'i **Uygulamalar** klasörüne sürükleyin. macOS 26+ ve Apple Silicon (M1 veya üstü) gerekir. Uygulama Apple tarafından onaylanmadığı (notarize edilmediği) için ilk açılışta uyarı çıkar: uygulamaya sağ tıklayın → **Aç** → **Aç**, ya da **Sistem Ayarları → Gizlilik ve Güvenlik → Yine de Aç**. SHA-256: `5d7ca26fc6df5796109251d181982db6c154f2eca5343fe5a4b8876cce10b71e`
+**İndir:** **[⬇ HexDock.dmg](https://github.com/Huseyinkayaw/HexDock/raw/main/release/HexDock.dmg)** — açın ve **HexDock**'i **Uygulamalar** klasörüne sürükleyin. macOS 26+ ve Apple Silicon (M1 veya üstü) gerekir. Uygulama Apple tarafından onaylanmadığı (notarize edilmediği) için macOS ilk açılışı engeller ("Apple … doğrulayamadı"). **Bitti**'ye basın, sonra **Sistem Ayarları → Gizlilik ve Güvenlik**'te aşağı inip HexDock için **Yine de Aç**'a tıklayın. Ya da Terminal'de bir kez şunu çalıştırın: `xattr -dr com.apple.quarantine /Applications/HexDock.app` SHA-256: `5d7ca26fc6df5796109251d181982db6c154f2eca5343fe5a4b8876cce10b71e`
 
 **Kaynaktan derleme:** macOS 26+ ve Xcode Command Line Tools gerekir. `./build.sh` derler ve `/Applications/HexDock.app` olarak kurar. **Erişilebilirlik** ve **Ekran Kaydı** izinleri gerekir (menü çubuğu simgesi → İzinler).
